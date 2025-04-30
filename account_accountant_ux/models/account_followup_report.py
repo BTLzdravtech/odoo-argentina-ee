@@ -9,6 +9,7 @@ from odoo.tools.misc import formatLang, format_date
 class AccountFollowupReport(models.AbstractModel):
     _inherit = "account.followup.report"
 
+    # TODO vk: lock for arg
     def _get_followup_report_lines(self, options):
         """
         Compute and return the lines of the columns of the follow-ups report.

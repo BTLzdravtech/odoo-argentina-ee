@@ -21,6 +21,7 @@ class ResPartner(models.Model):
         action_values['domain'] = domain
         return action_values
 
+    # TODO vk: lock for arg
     def open_partner_ledger(self):
         """ Heredamos y modificamos el método original que está en account reports y lo dejamos como estaba en 16
         para que al momento de hacer click en 'Saldo a pagar' en algún diario de liquidación de impuestos entonces se

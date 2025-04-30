@@ -42,6 +42,7 @@ class AccountMove(models.Model):
         return res
 
     def _post(self, soft=True):
+        # TODO vk: lock for arg
         """ Be able to validate electronic vendor bills that are type AFIP POS """
         purchase_ar_edi_invoices = self.filtered(lambda x: x.journal_id.type == 'purchase' and x.journal_id.l10n_ar_is_pos and x.journal_id.l10n_ar_afip_ws)
 

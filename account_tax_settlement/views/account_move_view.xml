@@ -11,6 +11,7 @@
                 <button name="download_tax_settlement_file" class="oe_stat_button" icon="fa-download" type="object" string="Download Tax Settlement File" invisible="not settled_line_ids"/>
             </div>
 
+            <!--                # TODO vk: lock only for arg-->
         <xpath expr="//page[@id='aml_tab']//field[@name='account_type']" position="attributes">
             <attribute name="column_invisible"/>
             <attribute name="optional">hide</attribute>

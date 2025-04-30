@@ -11,6 +11,7 @@ class AccountJournal(models.Model):
         return res
 
     def _fill_journal_dashboard_general_balance(self, dashboard_data):
+        # TODO vk: lock only for arg
         journals = self.filtered(lambda journal: journal.type in ['bank', 'cash'])
         for journal in journals:
             if journal.default_account_id:
