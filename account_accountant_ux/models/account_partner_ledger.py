@@ -5,9 +5,12 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
     _inherit = 'account.partner.ledger.report.handler'
 
     def open_journal_items(self, options, params):
-        # TODO vk: lock for arg
-        # Modificamos las vistas para que use las nuestras de account_ux en vez de las de partner grouped
-        res = super().open_journal_items(options, params)
-        res['search_view_id'] = [self.env.ref('account_ux.view_account_partner_ledger_filter').id, 'search']
-        res['views'] = [(self.env.ref('account.view_move_line_payment_tree').id, 'list')]
-        return res
+        # DONETODO vk: lock for arg
+        if self.env.company.country_id.code == "AR":
+            # Modificamos las vistas para que use las nuestras de account_ux en vez de las de partner grouped
+            res = super().open_journal_items(options, params)
+            res['search_view_id'] = [self.env.ref('account_ux.view_account_partner_ledger_filter').id, 'search']
+            res['views'] = [(self.env.ref('account.view_move_line_payment_tree').id, 'list')]
+            return res
+        else:
+            return super().open_journal_items(options, params)

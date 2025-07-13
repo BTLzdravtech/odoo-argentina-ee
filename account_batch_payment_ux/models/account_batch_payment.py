@@ -12,10 +12,11 @@ class AccountBatchPayment(models.Model):
             raise UserError(_("You are not allowed to delete payments from a batch payment if the batch is not on draft state."))
 
     def unlink(self):
-        # TODO vk: lock for arg
-        """This method don't allow to delete an account batch payment if it's not on draft state"""
-        if self.filtered(lambda x: x.state != 'draft'):
-            raise UserError(_("You are not allowed to delete a batch payment if is not on draft state."))
+        # DONETODO vk: lock for arg
+        if self.env.company.country_code == 'AR':
+            """This method don't allow to delete an account batch payment if it's not on draft state"""
+            if self.filtered(lambda x: x.state != 'draft'):
+                raise UserError(_("You are not allowed to delete a batch payment if is not on draft state."))
         return super().unlink()
 
     def action_draft(self):
@@ -46,7 +47,10 @@ class AccountBatchPayment(models.Model):
     # No falla en runbot de odoo porque el módulo de sepa direct debit tiene un método similar a este
     # Ticket a odoo con la explicación: https://www.odoo.com/es_ES/my/tasks/4296137
     # Una vez que lo solucionen en Odoo, deberíamos hacer un revert de este código
-    # TODO vk: do we need this ?
+    # DONETODO vk: do we need this ?
     @api.constrains('batch_type', 'journal_id', 'payment_ids')
     def _check_payments_constrains(self):
-        super(AccountBatchPayment, self)._check_payments_constrains()
+        if self.env.company.country_code == 'AR':
+            super(AccountBatchPayment, self)._check_payments_constrains()
+        else:
+            return super()._check_payments_constrains()
