@@ -29,5 +29,4 @@ class AccountJournal(models.Model):
                         dashboard_data[journal.id].update({
                             'account_balance_general': formatLang(self.env, currency.round(account_sum) + 0.0, currency_obj=currency)
                         })
-        else:
-            return super()._fill_journal_dashboard_general_balance(dashboard_data)
+

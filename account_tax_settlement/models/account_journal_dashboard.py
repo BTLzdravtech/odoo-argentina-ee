@@ -26,8 +26,7 @@ class AccountJournal(models.Model):
                     'unsettled_amount': formatLang(self.env, -sum(unsettled_lines.mapped('balance')), currency_obj=currency),
                     'debit_amount': formatLang(self.env, journal.settlement_partner_id.debit, currency_obj=currency),
                 })
-        else:
-            return super()._fill_tax_settlement_dashboard_data(dashboard_data)
+
 
 
     def open_action(self):
