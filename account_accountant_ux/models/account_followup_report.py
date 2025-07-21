@@ -9,7 +9,6 @@ from odoo.tools.misc import formatLang, format_date
 class AccountFollowupReport(models.AbstractModel):
     _inherit = "account.followup.report"
 
-    # DONETODO vk: lock for arg
     def _get_followup_report_lines(self, options):
         if self.env.company.country_id.code == "AR":
             """

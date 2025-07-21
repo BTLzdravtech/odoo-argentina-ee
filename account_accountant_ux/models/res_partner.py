@@ -21,7 +21,6 @@ class ResPartner(models.Model):
         action_values['domain'] = domain
         return action_values
 
-    # DONETODO vk: lock for arg
     def open_partner_ledger(self):
         if self.env.company.country_id.code == "AR":
             """ Heredamos y modificamos el método original que está en account reports y lo dejamos como estaba en 16

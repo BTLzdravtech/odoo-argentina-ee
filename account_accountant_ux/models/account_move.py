@@ -6,7 +6,6 @@ class AccountMove(models.Model):
     _inherit = "account.move"
 
     def action_open_business_doc(self):
-        # DONETODO vk: lock for arg, do we need this ?
         if self.company_id.country_id == self.env.ref('base.ar'):
             """ En account_accountant odoo modifica este metodo y si tiene vinculada statement_line line te manda al statement line
             el tema es que para migraciones de 13 podes tener un asiento vinculado a statement_line y payment a la vez.

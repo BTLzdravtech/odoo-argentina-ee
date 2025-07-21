@@ -11,7 +11,6 @@ class AccountJournal(models.Model):
         return res
 
     def _fill_tax_settlement_dashboard_data(self, dashboard_data):
-        # DONETODO vk: lock for arg
         if self.company_id.country_code == 'AR':
             """ En diarios de liquidación en vista kanban agregamos al lado del botoncitos 'Líneas a liquidar' la cantidad de líneas de liquidar y el importe y al lado del botoncito 'Saldo a pagar' agregamos el importe """
             tax_settlement_journals = self.filtered(lambda journal: journal.tax_settlement != False)
@@ -30,7 +29,6 @@ class AccountJournal(models.Model):
 
 
     def open_action(self):
-        # DONETODO vk: lock for arg
         if self.company_id.country_code == 'AR':
             """
             Modificamos funcion para que si es liquidacion de impuestos devuelva accion correspondiente

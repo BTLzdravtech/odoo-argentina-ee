@@ -11,7 +11,6 @@ class AccountJournal(models.Model):
         return res
 
     def _fill_journal_dashboard_general_balance(self, dashboard_data):
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             journals = self.filtered(lambda journal: journal.type in ['bank', 'cash'])
             for journal in journals:

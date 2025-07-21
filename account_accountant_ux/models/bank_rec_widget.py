@@ -7,7 +7,6 @@ class BankRecWidget(models.Model):
     _inherit = "bank.rec.widget"
 
     def _prepare_embedded_views_data(self):
-        # DONETODO vk: lock for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             data = super()._prepare_embedded_views_data()
             data['amls']['context']['default_st_line_id'] = self.st_line_id.id
@@ -31,7 +30,6 @@ class BankRecWidget(models.Model):
 
 
     def _lines_recompute_exchange_diff(self):
-        # DONETODO vk: lock for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             self.ensure_one()
             self._ensure_loaded_lines()

@@ -176,7 +176,6 @@ class AccountChartTemplate(models.AbstractModel):
                     impuesto.withholding_amount_type = 'untaxed_amount'
 
     def _load(self, template_code, company, install_demo=False):
-        # DONETODO vk: lock for arg
         if self.env.company.country_id.code == "AR":
             """ Luego de que creen los impuestos del archivo account.tax-ar_ri.csv de l10n_ar al instalar el plan de cuentas en la nueva compañìa argentina agregamos en este método las etiquetas que correspondan en los repartition lines. """
             # Llamamos a super para que se creen los impuestos

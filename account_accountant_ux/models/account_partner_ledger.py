@@ -5,7 +5,6 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
     _inherit = 'account.partner.ledger.report.handler'
 
     def open_journal_items(self, options, params):
-        # DONETODO vk: lock for arg
         if self.env.company.country_id.code == "AR":
             # Modificamos las vistas para que use las nuestras de account_ux en vez de las de partner grouped
             res = super().open_journal_items(options, params)
