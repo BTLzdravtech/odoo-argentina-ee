@@ -1,6 +1,6 @@
 {
     'name': 'Tax Settlement',
-    'version': "17.0.1.3.0",
+    'version': "17.0.1.3.1",
     'category': 'Accounting',
     'sequence': 14,
     'summary': '',

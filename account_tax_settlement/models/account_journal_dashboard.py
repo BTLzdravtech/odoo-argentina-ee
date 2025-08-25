@@ -7,24 +7,24 @@ class AccountJournal(models.Model):
 
     def _get_journal_dashboard_data_batched(self):
         res = super(AccountJournal, self)._get_journal_dashboard_data_batched()
-        self._fill_tax_settlement_dashboard_data(res)
+        if self.env.company_id == 'AR':
+            self._fill_tax_settlement_dashboard_data(res)
         return res
 
     def _fill_tax_settlement_dashboard_data(self, dashboard_data):
-        if self.company_id.country_code == 'AR':
-            """ En diarios de liquidación en vista kanban agregamos al lado del botoncitos 'Líneas a liquidar' la cantidad de líneas de liquidar y el importe y al lado del botoncito 'Saldo a pagar' agregamos el importe """
-            tax_settlement_journals = self.filtered(lambda journal: journal.tax_settlement != False)
-            if not tax_settlement_journals:
-                return
-            # TODO hacer por sql para mejorar performance
-            for journal in tax_settlement_journals:
-                currency = journal.currency_id or journal.company_id.currency_id
-                unsettled_lines = journal._get_tax_settlement_move_lines_by_tags()
-                dashboard_data[journal.id].update({
-                    'unsettled_count': len(unsettled_lines),
-                    'unsettled_amount': formatLang(self.env, -sum(unsettled_lines.mapped('balance')), currency_obj=currency),
-                    'debit_amount': formatLang(self.env, journal.settlement_partner_id.debit, currency_obj=currency),
-                })
+        """ En diarios de liquidación en vista kanban agregamos al lado del botoncitos 'Líneas a liquidar' la cantidad de líneas de liquidar y el importe y al lado del botoncito 'Saldo a pagar' agregamos el importe """
+        tax_settlement_journals = self.filtered(lambda journal: journal.tax_settlement != False)
+        if not tax_settlement_journals:
+            return
+        # TODO hacer por sql para mejorar performance
+        for journal in tax_settlement_journals:
+            currency = journal.currency_id or journal.company_id.currency_id
+            unsettled_lines = journal._get_tax_settlement_move_lines_by_tags()
+            dashboard_data[journal.id].update({
+                'unsettled_count': len(unsettled_lines),
+                'unsettled_amount': formatLang(self.env, -sum(unsettled_lines.mapped('balance')), currency_obj=currency),
+                'debit_amount': formatLang(self.env, journal.settlement_partner_id.debit, currency_obj=currency),
+            })
 
 
 
