@@ -7,7 +7,7 @@ class AccountJournal(models.Model):
 
     def _get_journal_dashboard_data_batched(self):
         res = super(AccountJournal, self)._get_journal_dashboard_data_batched()
-        if self.env.company_id == 'AR':
+        if self.env.company.country_id.code == 'AR':
             self._fill_tax_settlement_dashboard_data(res)
         return res
 
