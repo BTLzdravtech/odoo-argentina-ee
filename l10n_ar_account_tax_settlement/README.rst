@@ -16,10 +16,9 @@ Tax Settlements For Argentina
 
 Este módulo imlementa:
 
-* archivos para declaración de distintos impuestos (principalmente percepciones y retenciones)
+* Archivos para declaración de distintos impuestos (principalmente percepciones y retenciones)
 * Funcionalidad y datos para auste por inflación (The index are extracted from https://www.facpce.org.ar/indices-facpce/)
-* Al momento de instalar el módulo se agregan los códigos de impuestos correspondientes para retenciones de ganancias aplicadas y retenciones de iva aplicadas. También se agregan al momento de instalar el módulo las etiquetas de en las repartition lines de impuestos para percepciones. Lo descripto en este punto sucede en compañías argentinas responsable inscripto con plan de cuentas ri establecido.
-* Se agregan códigos de impuestos a impuestos de retenciones de ganancias aplicadas y retenciones de iva aplicadas. Y también se agregan las etiquetas de en las repartition lines de impuestos para percepciones. Lo descripto en este punto se agrega en compañías responsable inscripto argentinas nuevas al momento de instalar plan de cuentas responsable inscripto.
+* Al momento de instalar el módulo o crear nuevas compañías argentinas con plan de cuentas establecido se crean los diarios de liquidación de impuestos correspondientes.
 
 Archivos para declaración de impuestos
 ======================================
@@ -29,7 +28,7 @@ Especificación de archivos:
 
 * SICORE: Algunoas links de neteres:
 
- * Detalle con captura de lo que solicita y lo que tenemos implementado: http://www.planillasutiles.com.ar/2014/09/hoja-de-calculos-para-importar-las.html
+ * Detalle con captura de lo que solicita y lo que tenemos implementado: http://www.planillasutiles.com.ar/2014/09/hoja-de-calculos-para-importar-las.html . En /data/relaciones-codigos-sicore.xlsx dejamos archivo relaciones-codigos-sicore.xlsx con combinaciones entre código de impuesto, código régimen y código condición.
 
 * SIFERE: https://drive.google.com/open?id=0B3trzV0e2WzvcG5kOVI5cTdjQm1lSWtpcFhzVFlWSlctQ0Nv y mas data aca http://www.ca.gov.ar/faqs/preguntas-generales/sifere/sifere-faq/como-armar-los-archivos-en-formato-txt-para-cargar-los-conceptos-de-retenciones-percepciones-comunes-y-aduaneras-y-recaudaciones-bancarias-en-el-aplicativo-sifere. Mas de sifere tmb acá https://drive.google.com/open?id=0B3trzV0e2WzvUjB1MnhXT0VteFE
 

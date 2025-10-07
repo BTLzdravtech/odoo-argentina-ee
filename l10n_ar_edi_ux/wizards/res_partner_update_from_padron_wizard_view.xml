@@ -61,12 +61,12 @@
                     <group invisible="state in ('option', 'finished')">
                         <field name="partner_id" required="state == 'selection'"/>
                         <field name="field_ids" nolabel="1" colspan="2">
-                            <tree create="false">
+                            <list create="false">
                                 <field name="label"/>
                                 <field name="field" groups="base.group_no_one"/>
                                 <field name="old_value"/>
                                 <field name="new_value"/>
-                            </tree>
+                            </list>
                         </field>
                     </group>
                 </sheet>
@@ -76,10 +76,10 @@
 
     <record id="action_partner_update" model="ir.actions.act_window">
         <field name="res_model">res.partner.update.from.padron.wizard</field>
-        <field name="binding_model_id" ref="base.model_res_partner"/>
         <field name="target">new</field>
         <field name="view_mode">form</field>
         <field name="name">Automatic Update from Padron</field>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
     </record>
 
 </odoo>

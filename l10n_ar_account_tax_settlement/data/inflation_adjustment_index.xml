@@ -705,4 +705,54 @@
         <field name="value">7122.2421</field>
     </record>
 
+    <record id="index_10_2024" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2024-10-01')"/>
+        <field name="value">7313.9542</field>
+    </record>
+
+    <record id="index_11_2024" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2024-11-01')"/>
+        <field name="value">7491.4314</field>
+    </record>
+
+    <record id="index_12_2024" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2024-12-01')"/>
+        <field name="value">7694.0075</field>
+    </record>
+
+    <record id="index_01_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-01-01')"/>
+        <field name="value">7864.1257</field>
+    </record>
+
+    <record id="index_02_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-02-01')"/>
+        <field name="value">8052.9927</field>
+    </record>
+
+    <record id="index_03_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-03-01')"/>
+        <field name="value">8353.3158</field>
+    </record>
+
+    <record id="index_04_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-04-01')"/>
+        <field name="value">8585.6078</field>
+    </record>
+
+    <record id="index_05_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-05-01')"/>
+        <field name="value">8714.4871</field>
+    </record>
+
+    <record id="index_06_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-06-01')"/>
+        <field name="value">8855.5681</field>
+    </record>
+
+    <record id="index_07_2025" model="inflation.adjustment.index">
+        <field name="date" eval="time.strftime('2025-07-01')"/>
+        <field name="value">9023.973</field>
+    </record>
+
 </odoo>
