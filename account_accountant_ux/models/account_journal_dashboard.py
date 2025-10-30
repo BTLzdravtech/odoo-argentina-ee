@@ -7,7 +7,8 @@ class AccountJournal(models.Model):
 
     def _get_journal_dashboard_data_batched(self):
         res = super(AccountJournal, self)._get_journal_dashboard_data_batched()
-        self._fill_journal_dashboard_general_balance(res)
+        if self.env.company.country_id.code == 'AR':
+            self._fill_journal_dashboard_general_balance(res)
         return res
 
     def _fill_journal_dashboard_general_balance(self, dashboard_data):

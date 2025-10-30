@@ -359,29 +359,30 @@ class AccountJournal(models.Model):
             )
 
     def open_action(self):
-        """
-        Modificamos funcion para que si es liquidacion de impuestos devuelva accion correspondiente
-        Y si es deuda del partner muestre el partner ledger
-        """
-        if self.type == "general" and self.tax_settlement:
-            tax_settlement = self._context.get("tax_settlement", False)
-            debt_balance = self._context.get("debt_balance", False)
-            if tax_settlement:
-                # Ingresa aquí al entrar en vista Kanban en diario de liquidacion en el botoncito "Líneas a liquidar"
-                action = self.env["ir.actions.actions"]._for_xml_id(
-                    "account_tax_settlement.action_account_tax_move_line"
-                )
-                action["domain"] = self._get_tax_settlement_lines_domain_by_tags()
-                return action
-            elif debt_balance and self.settlement_partner_id:
-                # Ingresa aquí al entrar en vista Kanban en diario de liquidacion en el botoncito 'Saldo a pagar'
-                action = self.settlement_partner_id.open_partner_ledger()
-                ctx = safe_eval(action.get("context"))
-                ctx.update(
-                    {
-                        "default_partner_id": self.settlement_partner_id.id,
-                    }
-                )
-                action["context"] = ctx
-                return action
+        if self.env.company.country_code == 'AR':
+            """
+            Modificamos funcion para que si es liquidacion de impuestos devuelva accion correspondiente
+            Y si es deuda del partner muestre el partner ledger
+            """
+            if self.type == "general" and self.tax_settlement:
+                tax_settlement = self._context.get("tax_settlement", False)
+                debt_balance = self._context.get("debt_balance", False)
+                if tax_settlement:
+                    # Ingresa aquí al entrar en vista Kanban en diario de liquidacion en el botoncito "Líneas a liquidar"
+                    action = self.env["ir.actions.actions"]._for_xml_id(
+                        "account_tax_settlement.action_account_tax_move_line"
+                    )
+                    action["domain"] = self._get_tax_settlement_lines_domain_by_tags()
+                    return action
+                elif debt_balance and self.settlement_partner_id:
+                    # Ingresa aquí al entrar en vista Kanban en diario de liquidacion en el botoncito 'Saldo a pagar'
+                    action = self.settlement_partner_id.open_partner_ledger()
+                    ctx = safe_eval(action.get("context"))
+                    ctx.update(
+                        {
+                            "default_partner_id": self.settlement_partner_id.id,
+                        }
+                    )
+                    action["context"] = ctx
+                    return action
         return super(AccountJournal, self).open_action()
