@@ -13,9 +13,10 @@ class AccountBatchPayment(models.Model):
             )
 
     def unlink(self):
-        """This method don't allow to delete an account batch payment if it's not on draft state"""
-        if self.filtered(lambda x: x.state != "draft"):
-            raise UserError(_("You are not allowed to delete a batch payment if is not on draft state."))
+        if self.env.company.country_code == 'AR':
+            """This method don't allow to delete an account batch payment if it's not on draft state"""
+            if self.filtered(lambda x: x.state != "draft"):
+                raise UserError(_("You are not allowed to delete a batch payment if is not on draft state."))
         return super().unlink()
 
     def action_draft(self):
