@@ -21,6 +21,7 @@ class AccountChangeLockDate(models.TransientModel):
         self.tax_lock_date = self.company_id.tax_lock_date
 
     def change_lock_date(self):
+        # TODO: Odoo BTL - needs to be locked on AR company
         if self.env.user.has_group("account.group_account_manager"):
             if any(
                 lock_date > fields.Date.context_today(self)

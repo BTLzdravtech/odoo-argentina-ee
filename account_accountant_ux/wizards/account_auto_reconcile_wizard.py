@@ -53,6 +53,7 @@ class AccountAutoReconcileWizard(models.TransientModel):
         """Automatically reconcile amls given wizard's parameters.
         :return: an action that opens all reconciled items and related amls (exchange diff, etc)
         """
+        # TODO: Odoo BTL - needs to be locked on AR company
         self.ensure_one()
         if self.search_mode == "all_from_partner":
             reconciled_amls = self._auto_reconcile_all_from_partner()
