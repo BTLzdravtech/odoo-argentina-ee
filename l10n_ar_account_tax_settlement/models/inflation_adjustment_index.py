@@ -18,6 +18,7 @@ class InflationAdjustmentIndex(models.Model):
     )
     xml_id = fields.Char(compute="_compute_xml_id", string="External ID")
 
+    # TODO: Odoo BTL - please add parameters to the depends()
     @api.depends()
     def _compute_xml_id(self):
         res = self.get_external_id()
