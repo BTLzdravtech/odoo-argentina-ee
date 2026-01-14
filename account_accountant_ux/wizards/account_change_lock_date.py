@@ -21,18 +21,18 @@ class AccountChangeLockDate(models.TransientModel):
         self.tax_lock_date = self.company_id.tax_lock_date
 
     def change_lock_date(self):
-        # TODO: Odoo BTL - needs to be locked on AR company
-        if self.env.user.has_group("account.group_account_manager"):
-            if any(
-                lock_date > fields.Date.context_today(self)
-                for lock_date in (
-                    self.fiscalyear_lock_date,
-                    self.tax_lock_date,
-                )
-                if lock_date
-            ):
-                raise UserError(_("You cannot set a lock date in the future."))
-            self.company_id.sudo().write(self._prepare_lock_date_values())
-        else:
-            raise UserError(_("Only Billing Administrators are allowed to change lock dates!"))
-        return {"type": "ir.actions.act_window_close"}
+        if self.env.company.country_code == 'AR':
+            if self.env.user.has_group("account.group_account_manager"):
+                if any(
+                    lock_date > fields.Date.context_today(self)
+                    for lock_date in (
+                        self.fiscalyear_lock_date,
+                        self.tax_lock_date,
+                    )
+                    if lock_date
+                ):
+                    raise UserError(_("You cannot set a lock date in the future."))
+                self.company_id.sudo().write(self._prepare_lock_date_values())
+            else:
+                raise UserError(_("Only Billing Administrators are allowed to change lock dates!"))
+            return {"type": "ir.actions.act_window_close"}
