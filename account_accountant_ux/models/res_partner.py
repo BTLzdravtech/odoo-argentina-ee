@@ -70,7 +70,8 @@ class ResPartner(models.Model):
         Esto no solo lo hacemos para tax_Settelement si no tmb para usabilidad general al usar el botón de ir a libro mayor
         desde la form de partners
         """
-        return self._open_report_action("account_reports.action_account_report_partner_ledger")
+        if self.env.company.country_code == 'AR':
+            return self._open_report_action("account_reports.action_account_report_partner_ledger")
 
     def open_mass_partner_ledger(self):
         partner_ids = self._validate_mass_selection()

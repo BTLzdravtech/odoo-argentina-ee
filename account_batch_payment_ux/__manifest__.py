@@ -33,6 +33,7 @@
     "data": ["views/account_batch_payment.xml", "views/account_payment_views.xml"],
     "demo": [],
     "installable": True,
+    # TODO: Odoo BTL - auto_install must be False
     "auto_install": True,
     "application": False,
 }

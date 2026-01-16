@@ -53,16 +53,17 @@ class AccountAutoReconcileWizard(models.TransientModel):
         """Automatically reconcile amls given wizard's parameters.
         :return: an action that opens all reconciled items and related amls (exchange diff, etc)
         """
-        self.ensure_one()
-        if self.search_mode == "all_from_partner":
-            reconciled_amls = self._auto_reconcile_all_from_partner()
-            if reconciled_amls:
-                return {
-                    "name": _("Automatically Reconciled Entries"),
-                    "type": "ir.actions.act_window",
-                    "res_model": "account.move.line",
-                    "context": "{'search_default_group_by_matching': True}",
-                    "view_mode": "list",
-                    "domain": [("id", "in", reconciled_amls.ids)],
-                }
+        if self.env.company.country_code == 'AR':
+            self.ensure_one()
+            if self.search_mode == "all_from_partner":
+                reconciled_amls = self._auto_reconcile_all_from_partner()
+                if reconciled_amls:
+                    return {
+                        "name": _("Automatically Reconciled Entries"),
+                        "type": "ir.actions.act_window",
+                        "res_model": "account.move.line",
+                        "context": "{'search_default_group_by_matching': True}",
+                        "view_mode": "list",
+                        "domain": [("id", "in", reconciled_amls.ids)],
+                    }
         super().auto_reconcile()
