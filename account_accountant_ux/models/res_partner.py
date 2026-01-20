@@ -72,6 +72,7 @@ class ResPartner(models.Model):
         """
         if self.env.company.country_code == 'AR':
             return self._open_report_action("account_reports.action_account_report_partner_ledger")
+        return super().open_partner_ledger()
 
     def open_mass_partner_ledger(self):
         partner_ids = self._validate_mass_selection()
