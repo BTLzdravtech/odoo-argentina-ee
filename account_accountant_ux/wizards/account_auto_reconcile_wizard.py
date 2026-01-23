@@ -66,4 +66,4 @@ class AccountAutoReconcileWizard(models.TransientModel):
                         "view_mode": "list",
                         "domain": [("id", "in", reconciled_amls.ids)],
                     }
-        super().auto_reconcile()
+        return super().auto_reconcile()

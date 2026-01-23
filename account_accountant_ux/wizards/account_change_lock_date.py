@@ -36,3 +36,5 @@ class AccountChangeLockDate(models.TransientModel):
             else:
                 raise UserError(_("Only Billing Administrators are allowed to change lock dates!"))
             return {"type": "ir.actions.act_window_close"}
+        else:
+            return super().change_lock_date()
