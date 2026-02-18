@@ -3,3 +3,4 @@
 ##############################################################################
 from . import account_journal_book_group
 from . import account_journal
+from . import ir_actions_window
