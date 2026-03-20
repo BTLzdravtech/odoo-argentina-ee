@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "ARBA Webservice (A122R)",
-    "version": "18.0.1.1.0",
+    "version": "18.0.1.4.0",
     "category": "Localization/Argentina",
     "sequence": 14,
     "author": "ADHOC SA",
@@ -33,7 +33,6 @@
     "data": [
         "security/ir.model.access.csv",
         "data/ir_cron_data.xml",
-        # "data/res_company_data.xml",
         "views/l10n_ar_dj_arba_views.xml",
         "views/account_payment_views.xml",
         "views/res_config_settings_views.xml",

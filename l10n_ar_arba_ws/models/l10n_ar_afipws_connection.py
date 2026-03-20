@@ -13,8 +13,8 @@ class L10nArAfipwsConnection(models.Model):
 
     def _get_l10n_ar_afip_ws(self):
         # EXTEND l10n_ar_edi
-        """Agregamos el webservice para conectarnos a ARBA y manejar DJ y RET"""
-        return super()._get_l10n_ar_afip_ws() + [("A122R", self.env._("Webservice Retenciones (A122R)"))]
+        """Agregamos el webservice para conectarnos a ARBA y manejar DDJJ y RET"""
+        return super()._get_l10n_ar_afip_ws() + [("A122R", self.env._("Withholding Webservice (A122R)"))]
 
     @api.model
     def _l10n_ar_get_afip_ws_url(self, afip_ws, environment_type):
@@ -76,9 +76,7 @@ class L10nArAfipwsConnection(models.Model):
 
         error = False
         try:
-            _logger.info(
-                "Connect to ARBA to get token: %s %s %s", afip_ws, company.l10n_ar_afip_ws_crt_id.name, company.name
-            )
+            _logger.info("Connect to ARBA to get token: %s %s", afip_ws, company.name)
             payload = (
                 f"client_id={client_id}&username={user}&password={password}&client_secret={client_secret}&"
                 "grant_type=password&scope=arba-profile%20arba-roles%20openid"

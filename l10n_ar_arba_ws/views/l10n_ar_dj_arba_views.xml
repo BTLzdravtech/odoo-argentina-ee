@@ -22,18 +22,19 @@
             <form>
                 <header>
                     <button name="action_open" type="object" string="Open" help="Connect to webservice" invisible="state != 'draft'"/>
+                    <button name="action_find_existing" type="object" string="Find" help="Find open DDJJ and load info" invisible="state != 'draft'" groups="base.group_no_one"/>
                     <button name="action_update_status" type="object" string="Update Status" help="Update the status via ws" invisible="state == 'draft'"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
                     <group>
                         <span class="oe_title">
-                            Seleccione fecha para calcular periodo que aplica
+                            Select a date to calculate the applicable period
                         </span>
-                        <field name="date"/>
-                        <field name="display_name" string="Aplicará al"/>
+                        <field name="date" readonly="state != 'draft'"/>
+                        <field name="display_name" string="It will apply to"/>
                     </group>
-                    <group string="Información de ARBA">
+                    <group string="ARBA Information">
                         <field name="name"/>
                         <field name="open_date"/>
                         <field name="due_date"/>

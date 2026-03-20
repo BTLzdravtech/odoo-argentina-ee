@@ -64,28 +64,19 @@ class AccountJournal(models.Model):
             # ("drei_aplicado", "TXT DREI Aplicado"),
             ("sicore_aplicado", "TXT SICORE Aplicado"),
             ("iibb_sufrido", "TXT IIBB p/ SIFERE"),
-            (
-                "iibb_aplicado",
-                "TXT Perc/Ret IIBB aplicadas ARBA: Percepciones ( excepto actividad 29, 7 quincenal, 7 y 17 de Bancos)",
-            ),
-            (
-                "iibb_aplicado_act_7",
-                "TXT Perc/Ret IIBB aplicadas ARBA: Percepciones Act. 7 método Percibido (quincenal)",
-            ),
             ("iibb_aplicado_agip", "TXT Perc/Ret IIBB aplicadas AGIP"),
             ("iibb_aplicado_api", "TXT Perc/Ret IIBB aplicadas API"),
             ("iibb_aplicado_sircar", "TXT Perc/Ret IIBB aplicadas SIRCAR"),
             ("iibb_aplicado_dgr_mendoza", "TXT  Perc/Ret IIBB aplicado DGR Mendoza"),
             ("retenciones_iva", "TXT Retenciones/Percepciones Sufridas IVA"),
-            # TODO descomentar las 2 opciones de abajo cuando se acerque la fecha 01/03/2026
-            # (
-            #     "iibb_aplicado_arba_desde_01032026",
-            #     "TXT Perc/Ret IIBB aplicadas ARBA desde 01/03/2026: Percepciones ( excepto actividad 29, 7 quincenal, 7 y 17 de Bancos)",
-            # ),
-            # (
-            #     "iibb_aplicado_arba_act_7_desde_01032026",
-            #     "TXT Perc/Ret IIBB aplicadas ARBA desde 01/03/2026: Percepciones Act. 7 método Percibido (quincenal)",
-            # ),
+            (
+                "iibb_aplicado_arba_desde_01032026",
+                "TXT Perc/Ret IIBB aplicadas ARBA: Percepciones ( excepto actividad 29, 7 quincenal, 7 y 17 de Bancos) + TXT Ret IIBB aplicadas ARBA alta por lote A-122R. Vigente desde 01/03/2026",
+            ),
+            (
+                "iibb_aplicado_arba_act_7_desde_01032026",
+                "TXT Perc/Ret IIBB aplicadas ARBA: Percepciones Act. 7 método Percibido (quincenal) + TXT Ret IIBB aplicadas ARBA alta por lote A-122R. Vigente desde 01/03/2026.",
+            ),
             # ('other', 'Other')
         ]
     )
@@ -583,8 +574,9 @@ class AccountJournal(models.Model):
                 content += line.l10n_latam_document_type_id.l10n_ar_letter if internal_type == "invoice" else " "
 
             # 6 - Nro de comprobante
-            content += "%016d" % int(re.sub("[^0-9]", "", move.l10n_latam_document_number or ""))
-
+            content += "%016d" % int(
+                re.sub("[^0-9]", "", re.sub(r"\s\(\d+\)$", "", move.l10n_latam_document_number or ""))
+            )
             # 7 - Fecha del comprobante
             content += fields.Date.from_string(move.date).strftime("%d/%m/%Y")
 
@@ -592,22 +584,19 @@ class AccountJournal(models.Model):
             if payment:
                 # solo en comprobantes A, M segun especificacion
                 vat_amount = 0.0
-                # es lo mismo que payment_group.matched_amount_untaxed
-                taxable_amount = float_round(line.withholding_id.base_amount, precision_digits=2)
-                rounded_withholding = float_round((taxable_amount * alicuot / 100), precision_digits=2)
-                # TODO en febrero 2026 sacar el if de abajo (más información en tarea 59174).
-                # Hacer revert de https://github.com/ingadhoc/odoo-argentina-ee/pull/743 en febrero 2026
                 total_amount = float_round(payment.move_id.amount_total_in_currency_signed, precision_digits=2)
-                if rounded_withholding != -line.balance:
-                    total_amount = float_round(total_amount + line.balance + rounded_withholding, precision_digits=2)
                 if backward_comp_is_installed and payment.is_backward_withholding_payment:
                     # Buscamos los payments sin retención que vienen migrados de la versión anterior y le sumamos
                     # el amount total de los mismos (move_id.amount_total_in_currency_signed) al total_amount de la
                     # retención. Esto lo hacemos porque en la migración de 16 a 18 se migran los pagos y las retenciones
                     # por separado a diferencia de 16 que estaba todo en el mismo asiento.
+                    # Contemplamos que en el nombre puede haber sufijos automáticos tipo " (2)" (por ejemplo)
+                    payment_name = re.sub(r"\s\(\d+\)$", "", payment.name)
                     related_payments = self.env["account.payment"].search(
                         [
-                            ("name", "=", payment.name),
+                            "|",
+                            ("name", "=", payment_name),
+                            ("name", "=like", payment_name + " (%)"),
                             ("company_id", "=", payment.company_id.id),
                             ("partner_id", "=", payment.partner_id.id),
                             ("id", "!=", payment.id),
@@ -618,6 +607,8 @@ class AccountJournal(models.Model):
                         total_amount += float_round(
                             sum(related_payments.mapped("move_id.amount_total_in_currency_signed")), precision_digits=2
                         )
+                # es lo mismo que payment_group.matched_amount_untaxed
+                taxable_amount = float_round(line.withholding_id.base_amount, precision_digits=2)
 
                 # lo sacamos por diferencia
                 other_taxes_amount = company_currency.round(total_amount - taxable_amount - vat_amount)
@@ -723,16 +714,8 @@ class AccountJournal(models.Model):
 
             # si la línea tiene moneda diferente de la moneda de la compañía queremos que la ret/perc
             # se calcule aplicando la alícuota sobre la base imponible en la moneda de la compañía
-            # TODO en febrero 2026 sacar lo que está a la derecha del "or" del if de abajo
-            # (más información en tarea 59174).
-            # Hacer revert de esto https://github.com/ingadhoc/odoo-argentina-ee/pull/743 en febrero 2026
-            rounded_ret_perc_applied = float_round((taxable_amount * alicuot / 100), precision_digits=2)
-            if (
-                line.currency_id
-                and line.currency_id != line.company_id.currency_id
-                or rounded_ret_perc_applied != -line.balance
-            ):
-                ret_perc_applied = rounded_ret_perc_applied
+            if line.currency_id and line.currency_id != line.company_id.currency_id:
+                ret_perc_applied = float_round((taxable_amount * alicuot / 100), precision_digits=2)
             content += format_amount((-line.balance if not ret_perc_applied else ret_perc_applied), 16, 2, ",")
 
             # 21 - Monto Total Retenido/Percibido
@@ -924,19 +907,27 @@ class AccountJournal(models.Model):
             # 10 Tipo de Régimen de Percepción
             # (código correspondiente según tabla definida por la jurisdicción)
             if not tax.l10n_ar_code:
-                raise ValidationError(
-                    _(
-                        "No hay regimen de retencion configurado para el impuesto '%(tax_name)s' del partner '%(partner_name)s'",
+                raise RedirectWarning(
+                    message=_(
+                        "No hay régimen de retencion (Código AFIP 'l10n_ar_code') configurado para el impuesto: '%(tax_name)s'.",
                         tax_name=tax.name,
-                        partner_name=line.partner_id.name,
-                    )
+                    ),
+                    action=tax.get_formview_action(),
+                    button_text=_("Edit Tax"),
                 )
             content.append(tax.l10n_ar_code)
 
             # 11 Jurisdicción: código en Convenio Multilateral de la
             # jurisdicción a la cual está presentando la DDJJ
-            if not tax.l10n_ar_state_id.jurisdiction_code:
-                raise ValidationError(_("No hay jurisdicción configurada en el impuesto!"))
+            if not tax.l10n_ar_state_id or not tax.l10n_ar_state_id.jurisdiction_code:
+                raise RedirectWarning(
+                    message=_(
+                        "No hay jurisdicción establecida en el impuesto '%(tax_name)s' o no tiene código de jurisdicción.",
+                        tax_name=tax.name,
+                    ),
+                    action=tax.get_formview_action(),
+                    button_text=_("Edit Tax"),
+                )
 
             content.append(tax.l10n_ar_state_id.jurisdiction_code)
 
@@ -1013,15 +1004,27 @@ class AccountJournal(models.Model):
             # 10 Tipo de Régimen de Percepción
             # (código correspondiente según tabla definida por la jurisdicción)
             if not tax.l10n_ar_code:
-                raise ValidationError(
-                    _("No hay régimen de percepción configurado para el impuesto: '%(tax_name)s'", tax_name=tax.name)
+                raise RedirectWarning(
+                    message=_(
+                        "No hay régimen de percepción (Código AFIP 'l10n_ar_code') configurado para el impuesto: '%(tax_name)s'.",
+                        tax_name=tax.name,
+                    ),
+                    action=tax.get_formview_action(),
+                    button_text=_("Edit Tax"),
                 )
             content.append(tax.l10n_ar_code)
 
             # 11 Jurisdicción: código en Convenio Multilateral de la
             # jurisdicción a la cual está presentando la DDJJ
-            if not tax.l10n_ar_state_id.jurisdiction_code:
-                raise ValidationError(_("No hay jurisdicción configurada en el impuesto!"))
+            if not tax.l10n_ar_state_id or not tax.l10n_ar_state_id.jurisdiction_code:
+                raise RedirectWarning(
+                    message=_(
+                        "No hay jurisdicción establecida en el impuesto '%(tax_name)s' o no tiene código de jurisdicción.",
+                        tax_name=tax.name,
+                    ),
+                    action=tax.get_formview_action(),
+                    button_text=_("Edit Tax"),
+                )
 
             content.append(tax.l10n_ar_state_id.jurisdiction_code)
 
@@ -1635,10 +1638,23 @@ class AccountJournal(models.Model):
             }
         ]
 
-    def iibb_aplicado_arba_act_7_desde_01032026_files_values(self, move_lines):
-        return self.iibb_aplicado_arba_desde_01032026_files_values(move_lines, act_7=True)
+    def iibb_aplicado_arba_desde_01032026_files_values(self, move_lines):
+        """Extendemos para que solo si esta disponible el módulo de arba_ws se incluya la generación del
+        archivo para registrar reteciones por lote"""
+        self.ensure_one()
+        return self.iibb_aplicado_arba_desde_01032026(
+            move_lines
+        ) + self.iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(move_lines)
 
-    def iibb_aplicado_arba_desde_01032026_files_values(self, move_lines, act_7=None):
+    def iibb_aplicado_arba_act_7_desde_01032026_files_values(self, move_lines):
+        """Extendemos para que solo si esta disponible el módulo de arba_ws se incluya la generación del
+        archivo para registrar reteciones por lote"""
+        self.ensure_one()
+        return self.iibb_aplicado_arba_desde_01032026(
+            move_lines, act_7=True
+        ) + self.iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(move_lines)
+
+    def iibb_aplicado_arba_desde_01032026(self, move_lines, act_7=None):
         """Desarrollado según especificación https://web.arba.gov.ar/instructivo-y-marco-normativo
         (ese enlace se obtiene de https://web.arba.gov.ar/agentes#presentacion-de-ddjj ,
         luego hay que ir a la sección "DDJJ Periódicas Web IIBB NOVEDAD" y hacer click en
@@ -1765,4 +1781,78 @@ class AccountJournal(models.Model):
                 "txt_filename": ret_txt_filename,
                 "txt_content": ret,
             },
+        ]
+
+    def iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(self, move_lines):
+        """Desarrollado según especificación Webservice (A122R):
+        https://web.arba.gov.ar/Instructivos-y-Marco-Normativo-A-122R
+        (ese enlace se obtiene de https://web.arba.gov.ar/agentes#presentacion-de-ddjj ,
+        luego hay que ir a la sección "Comprobantes de Retención (A-122R) Nuevo" y
+        hacer click en "Instructivo y Marco Normativo"). Finalmente descargar la especificación
+        donde dice 'Descargar PDF'. En este método se desarrolla el punto 1
+        'Retenciones (Régimen General y Regímenes Especiales)'
+        Solo para retenciones. Vigente desde 01/03/2026."""
+        self.ensure_one()
+        content = ""
+
+        # Forzamos para informar solo las retenciones (por las dudas por error seleccionen percepciones)
+        move_lines = move_lines.filtered(lambda x: x.withholding_id)
+
+        # Si el módulo de WS ARBA A122R está instalado, debemos filtrar para no informar en el TXT
+        # las retenciones que ya fueron informadas via webservice.
+        if self.env["ir.module.module"].search(
+            [("name", "=", "l10n_ar_arba_ws"), ("state", "in", ["installed", "to upgrade"])]
+        ):
+            move_lines = move_lines.filtered(lambda x: not x.withholding_id.l10n_ar_cert_number)
+
+        for line in move_lines:
+            # Nro. transacción Agente (numérico 20, desde 1 hasta 20. Formato 99999999999999999999)
+            content += re.sub(r"[^0-9]", "", str(line.name))[-20:].zfill(20)
+
+            # CUIT contribuyente Retenido (long 11, desde 21 hasta 31. Formato 99999999999)
+            content += line.partner_id.ensure_vat()
+
+            move = line.move_id
+            document_parts = move._l10n_ar_get_document_number_parts(
+                move.l10n_latam_document_number, move.l10n_latam_document_type_id.code
+            )
+            pto_venta = "{:0>5d}".format(document_parts["point_of_sale"])[-5:]
+
+            # Sucursal (long 5, desde 32 hasta 36)
+            # Mayor a cero. Completar con ceros a la izquierda.
+            content += str(pto_venta)
+
+            # Fecha de Operación (long 10, desde 37 hasta 46. Formato dd/mm/aaaa)
+            content += fields.Date.from_string(line.date).strftime("%d/%m/%Y")
+
+            # Alícuota (long 5.2, desde 47 a 51)
+            tax = line._get_settlement_tax()
+            content += "%05.2f" % tax.amount
+
+            # Base imponible (long 16.2, desde 52 hasta 67)
+            # Con separador decimal (, o .). Mayor a cero, o Excepto para Nota de crédito,
+            # donde el importe debe ser negativo y la base debe ser menor o igual a cero.
+            # Completar con ceros a la izquierda. En las notas de crédito el signo negativo
+            # ocupará la primera posición a la izquierda. Formato: 99999999999.99
+            content += "%016.2f" % line.withholding_id.base_amount
+
+            content += "\r\n"
+
+        period = move_lines and fields.Date.from_string(move_lines[0].date).strftime("%Y%mX") or ""
+
+        # ER-vat-PERIODO-ACTIVIDAD-LOTE_MD5
+        # Esto funciona para el tipo de actividad 6 que es el regimen de retenciones generales.
+        # En el futuro si agregamos mas regimenes/actividades debemos de sacar este dato
+        # de la configuracion de la compañía
+        filename = "ER-%s-%s-%s-LOTEXXXXX.txt" % (
+            self.company_id.vat,
+            period,
+            "6",  # 6 serian las retenciones
+        )
+
+        return [
+            {
+                "txt_filename": filename,
+                "txt_content": content,
+            }
         ]
