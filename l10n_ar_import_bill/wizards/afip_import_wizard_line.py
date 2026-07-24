@@ -129,6 +129,16 @@ class AfipImportWizardLine(models.TransientModel):
             move_type = "in_refund"
         return move_type
 
+    def _neto_sin_iva(self):
+        """Neto a imputar como costo sin IVA: el total menos "Otros Tributos"
+        (que se agregan aparte con el wizard de impuestos). Se usa tanto en el
+        fallback de RI como en el flujo de Exento / Monotributo."""
+        self.ensure_one()
+        base_amount = self.amount_total
+        if self.otros_tributos > 0:
+            base_amount -= self.otros_tributos
+        return base_amount
+
     # Definimos la funcion que crea las lineas de factura
     # con el precio unitario y los impuestos correspondientes
 
@@ -145,3 +155,19 @@ class AfipImportWizardLine(models.TransientModel):
                 "partner_id": partner.id,
             },
         )
+
+    def action_remove(self):
+        wizard = self.mapped("wizard_id")
+        self.unlink()
+        # Re-open the same wizard in a modal to refresh only its content (lines)
+        view = self.env.ref("l10n_ar_import_bill.view_afip_import_wizard_form", raise_if_not_found=False)
+        action = {
+            "type": "ir.actions.act_window",
+            "res_model": "afip.import.wizard",
+            "res_id": wizard.id if wizard else False,
+            "view_mode": "form",
+            "target": "new",
+        }
+        if view:
+            action.update({"view_id": view.id, "views": [(view.id, "form")]})
+        return action

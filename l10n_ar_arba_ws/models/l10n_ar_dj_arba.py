@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import datetime
 from http import HTTPStatus
@@ -10,6 +11,8 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools import format_date, html_escape
 
 WS_NAME = "A122R"
+
+_logger = logging.getLogger(__name__)
 
 
 class L10nArDjArba(models.Model):
@@ -128,18 +131,25 @@ class L10nArDjArba(models.Model):
         ok_msg = self.env._("The withholding was reported to ARBA (%s) successfully")
         error_prefix = self.env._("Reporting withholding via webservice (Certificate number was not generated)")
 
-        if not self:
+        ddjj = self
+        open_ddjj_error = False
+        if not ddjj:
             try:
-                self = self._ensure_dj(wh_line.payment_id.date, wh_line.company_id)
+                ddjj = self._ensure_dj(wh_line.payment_id.date, wh_line.company_id)
+                if ddjj.state != "open":
+                    open_ddjj_error = self.env._("DDJJ could not be opened, the withholding cannot be created")
             except (UserError, ValidationError) as exp:
                 self.env.cr.rollback()
-                wh_line.payment_id.message_post(
-                    body=self.env._("ERROR we were not able to create the withholding because of another error: ")
-                    + str(exp)
-                )
-                return
+                open_ddjj_error = str(exp)
 
-        env_type = self.company_id._get_arba_environment_type()
+        if open_ddjj_error or not ddjj:
+            wh_line.payment_id.message_post(
+                body=self.env._("ERROR trying to inform the withholding: ") + str(open_ddjj_error)
+            )
+            return
+
+        self = ddjj
+        env_type = self.company_id._get_arba_ws_environment_type()
 
         if env_type == "demo":
             # Simular que nos conectamos y hacemos un comprobante dummy local
@@ -199,10 +209,9 @@ class L10nArDjArba(models.Model):
         return from_date, to_date
 
     def _ensure_dj(self, wh_date, company):
-        """Encontrar la declaracion jurada que corresponde, que este abierta y
-        que este en el mismo periodo de la retención.
+        """Encontrar la declaracion jurada que corresponde, que este en el mismo periodo de la retención.
 
-        :return: DDJJ ARBA recordset or False if not DDJJ open found"""
+        :return: DDJJ ARBA recordset of the matching DDJJ for the given period"""
         from_date, to_date = self._find_dates(wh_date)
         dj_arba = self.search(
             [
@@ -221,7 +230,7 @@ class L10nArDjArba(models.Model):
                 }
             )
             dj_arba.action_open()
-        return dj_arba if dj_arba.state == "open" else False
+        return dj_arba
 
     def _get_fortnight(self, date):
         if date.day > 15:
@@ -275,11 +284,12 @@ class L10nArDjArba(models.Model):
                 str(html_escape(response.get("message")) or ""),
             )
         elif isinstance(error_obj, str):
-            error_msg = self.env._("<br>Response ERROR: %s", str(html_escape(error_obj)))
+            error_msg = self.env._("<br>Response: %s", str(html_escape(error_obj)))
         else:
-            error_msg = self.env._("<br>Unknown ERROR: %s", str(html_escape(str(error_obj))))
+            error_msg = self.env._("<br>Unknown: %s", str(html_escape(str(error_obj))))
         prefix_text = self.env._("ARBA ERROR") + (" " + msg_prefix if msg_prefix else " ")
         record.message_post(body=Markup(prefix_text + error_msg))
+        _logger.error("ARBA WS ERROR: %s", prefix_text + error_msg)
 
     def _process_arba_response(self, method, url, env_type, msg, data=None):
         """Let us to have both clean response dictionary and string of errors if exists
@@ -295,7 +305,7 @@ class L10nArDjArba(models.Model):
         data = json.dumps(data)
         response = None
         try:
-            response = requests.request(method, url, headers=headers, data=data, timeout=(10, 60))
+            response = requests.request(method, url, headers=headers, data=data, timeout=(45, 60))
         except Exception as exp:
             error = str(exp)
 
@@ -304,10 +314,21 @@ class L10nArDjArba(models.Model):
             error = f"{response.status_code} - {res.get('error')} {res.get('message')}"
         if error:
             self.message_post(body=self.env._("ERROR - %s:\n\n%s", msg, error))
+            _logger.error("ARBA WS ERROR - %s: %s", msg, error)
         else:
             response = response.json()
 
         return response, error
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_only_draft_without_withholdings(self):
+        non_draft_records = self.filtered(lambda record: record.state != "draft")
+        if non_draft_records:
+            raise UserError(self.env._("You can only delete DDJJ ARBA records in draft state."))
+
+        records_with_withholdings = self.filtered("l10n_ar_withholding_ids")
+        if records_with_withholdings:
+            raise UserError(self.env._("You cannot delete a DDJJ ARBA that has withholding lines."))
 
     # Buttons
 
@@ -353,7 +374,7 @@ class L10nArDjArba(models.Model):
         }
         """
         self.ensure_one()
-        env_type = self.company_id._get_arba_environment_type()
+        env_type = self.company_id._get_arba_ws_environment_type()
         ok_msg = self.env._("The declaration was successfully opened")
 
         if env_type == "demo":
@@ -402,7 +423,7 @@ class L10nArDjArba(models.Model):
             return
 
         ok_msg = self.env._("An existing DDJJ was successfully linked")
-        env_type = self.company_id._get_arba_environment_type()
+        env_type = self.company_id._get_arba_ws_environment_type()
         if env_type == "demo":
             # Simular que nos conectamos y hacemos la declaracion pero modo dummy local
             self.write(
@@ -474,7 +495,7 @@ class L10nArDjArba(models.Model):
         ]
         """
         self.ensure_one()
-        env_type = self.company_id._get_arba_environment_type()
+        env_type = self.company_id._get_arba_ws_environment_type()
         ok_msg = self.env._("The DDJJ's status has been updated")
         if env_type == "demo":
             # Simular que nos conectamos y hacemos la declaracion pero modo dummy local

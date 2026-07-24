@@ -1,5 +1,6 @@
 # from odoo.tools.misc import formatLang
 # from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
+import logging
 import re
 import unicodedata
 
@@ -7,6 +8,8 @@ from odoo import _, fields, models
 from odoo.exceptions import RedirectWarning, ValidationError
 from odoo.tools import ustr
 from odoo.tools.float_utils import float_round
+
+_logger = logging.getLogger(__name__)
 
 #########
 # helpers
@@ -61,7 +64,7 @@ class AccountJournal(models.Model):
             # ('vat', 'VAT'),
             # ('profits', 'Profits'),
             ("misiones", "TXT IIBB aplicado DGR Misiones"),
-            # ("drei_aplicado", "TXT DREI Aplicado"),
+            ("drei_aplicado", "TXT DREI Aplicado"),
             ("sicore_aplicado", "TXT SICORE Aplicado"),
             ("iibb_sufrido", "TXT IIBB p/ SIFERE"),
             ("iibb_aplicado_agip", "TXT Perc/Ret IIBB aplicadas AGIP"),
@@ -196,6 +199,12 @@ class AccountJournal(models.Model):
             return template % f"{round(amount, decimals):.2f}".replace(".", ",")
 
         self.ensure_one()
+        moves_to_validate = (
+            move_lines.filtered(lambda line: line.move_id.is_sale_document())
+            .mapped("move_id")
+            .filtered(lambda m: m.l10n_latam_document_type_id and m.l10n_latam_document_number)
+        )
+        moves_to_validate._validate_document_number_parts()
         ret = ""
         perc = ""
 
@@ -247,18 +256,17 @@ class AccountJournal(models.Model):
             # 5 - letra de comprobante
             internal_type = line.l10n_latam_document_type_id.internal_type
             # No se si esto es correcto en 17: si no tiene internal type entonces es pago
-            if internal_type:
+            if internal_type and line.move_id.is_sale_document():
                 move = line.move_id
+                if internal_type == "invoice":
+                    # factura
+                    content += "01" + line.l10n_latam_document_type_id.l10n_ar_letter
 
-            if internal_type and internal_type == "invoice":
-                # factura
-                content += "01" + line.l10n_latam_document_type_id.l10n_ar_letter
-
-            elif internal_type and internal_type == "debit_note":
-                # ND
-                content += "02" + line.l10n_latam_document_type_id.l10n_ar_letter
-            elif internal_type and internal_type == "credit_note":
-                content += "10" + line.l10n_latam_document_type_id.l10n_ar_letter
+                elif internal_type == "debit_note":
+                    # ND
+                    content += "02" + line.l10n_latam_document_type_id.l10n_ar_letter
+                elif internal_type == "credit_note":
+                    content += "10" + line.l10n_latam_document_type_id.l10n_ar_letter
             else:
                 # orden de pago (sin letra)
                 # 09 sería otro comprobante y 10 reinitegro de perc/ret
@@ -268,7 +276,11 @@ class AccountJournal(models.Model):
                 content += "03 "
 
             # 6 - numero comprobante Texto(16)
-            if internal_type and internal_type in ("invoice", "credit_note", "debit_note"):
+            if (
+                internal_type
+                and internal_type in ("invoice", "credit_note", "debit_note")
+                and line.move_id.is_sale_document()
+            ):
                 # TODO el aplicativo deberia empezar a aceptar 5 digitos
                 pos, number = get_pos_and_number(move.l10n_latam_document_number)
                 # versión 4.0 de siprib release 0 no acepta 5 dígitos aún
@@ -354,7 +366,8 @@ class AccountJournal(models.Model):
 
             # 17 - Importe IVA (solo si factura)
             if line.move_id.is_invoice():
-                amounts = line.move_id._l10n_ar_get_amounts(company_currency=True)
+                base_lines, _tax_lines = line.move_id._get_rounded_base_and_tax_lines()
+                amounts = line.move_id._l10n_ar_get_amounts(base_lines=base_lines)
                 vat_amount = amounts["vat_amount"]
                 base_amount = amounts["vat_taxable_amount"]
             else:
@@ -613,7 +626,8 @@ class AccountJournal(models.Model):
                 # lo sacamos por diferencia
                 other_taxes_amount = company_currency.round(total_amount - taxable_amount - vat_amount)
             elif line.move_id.is_invoice():
-                amounts = line.move_id._l10n_ar_get_amounts(company_currency=True)
+                base_lines, _tax_lines = line.move_id._get_rounded_base_and_tax_lines()
+                amounts = line.move_id._l10n_ar_get_amounts(base_lines=base_lines)
                 # segun especificacion el iva solo se reporta para estos
                 if line.l10n_latam_document_type_id.l10n_ar_letter in ["A", "M"]:
                     vat_amount = amounts["vat_amount"]
@@ -789,9 +803,7 @@ class AccountJournal(models.Model):
                     or "R"
                 )
                 content += line.l10n_latam_document_type_id.l10n_ar_letter
-            document_parts = move._l10n_ar_get_document_number_parts(
-                move.l10n_latam_document_number, move.l10n_latam_document_type_id.code
-            )
+            document_parts = move._get_document_number_parts()
             # si el punto de venta es de 5 digitos no encontramos doc
             # que diga como proceder, tomamos los ultimos 4 digitos
             pto_venta = "{:0>4d}".format(document_parts["point_of_sale"])[-4:]
@@ -887,7 +899,7 @@ class AccountJournal(models.Model):
                 content.append("2")
 
             # 4 Número del comprobante
-            content.append("%012d" % int(re.sub("[^0-9]", "", line.payment_id.name or "")))
+            content.append("%012d" % int(re.sub("[^0-9]", "", line.name or "")))
 
             # 5 Cuit del contribuyene
             content.append(line.partner_id.ensure_vat())
@@ -972,9 +984,9 @@ class AccountJournal(models.Model):
                 tipo_comprobante = letter == "E" and 106 or 102
             elif internal_type == "debit_note":
                 tipo_comprobante = letter == "E" and 6 or 2
-            elif line.move_id.type == "out_invoice":
+            elif line.move_id.move_type == "out_invoice":
                 tipo_comprobante = 20
-            elif line.move_id.type == "out_refund":
+            elif line.move_id.move_type == "out_refund":
                 tipo_comprobante = 120
             else:
                 raise ValidationError(_("Tipo de comprobante no reconocido"))
@@ -1071,6 +1083,13 @@ class AccountJournal(models.Model):
         sifereweb@comisionarbitral.gob.ar
         """
         self.ensure_one()
+        move_lines.filtered(
+            lambda line: (
+                not line.payment_id
+                and line.move_id.l10n_latam_document_type_id
+                and line.move_id.l10n_latam_document_number
+            )
+        ).mapped("move_id")._validate_document_number_parts()
 
         ret = ""
         perc = ""
@@ -1109,9 +1128,7 @@ class AccountJournal(models.Model):
                 content += f"{pos:>04s}"
                 content += f"{number:>016s}"
             else:
-                document_parts = move._l10n_ar_get_document_number_parts(
-                    move.l10n_latam_document_number, move.l10n_latam_document_type_id.code
-                )
+                document_parts = move._get_document_number_parts()
                 pos = document_parts["point_of_sale"]
                 number = document_parts["invoice_number"]
                 # si el punto de venta es de 5 digitos no encontramos doc
@@ -1346,35 +1363,36 @@ class AccountJournal(models.Model):
             }
         ]
 
-    # def drei_aplicado_files_values(self, move_lines):
-    #     """ Implementado segun especificación indicada en ticket 39347. También se puede ver detalles en readme
-    #     """
-    #     self.ensure_one()
-    #     content = ''
-    #     for line in move_lines.sorted(key=lambda r: (r.date, r.id)):
-    #         if line.payment_id:
-    #             date = line.payment_id.date
-    #             # cuit (req): 11
-    #             content += line.partner_id.ensure_vat()
-    #             # razon_soc (req): 80
-    #             content += line.partner_id.name.ljust(80)[:80]
-    #             # nro_certificado: 10
-    #             content += '%010d' % int(line.withholding_id.name)
-    #             # fecha_ret: 10 (formato "dd/mm/aaaa")
-    #             content += fields.Date.from_string(date).strftime('%d/%m/%Y')
-    #             # base_imp: 09.2
-    #             content += '%012.2f' % line.withholding_id.base_amount
-    #             # alicuota: 09.6 . En principio por ahora lo estamos haciendo el cálculo de retención "basado en regla".
-    #             # TODO: no existe más el cálculo de retención "Basado en regla" en 18, ¿cómo lo implementamos?
-    #             content += "{:0>16.6f}".format(line.withholding_id.tax_id._get_rule(line.payment_id).percentage * 100)
-    #             # importe (req): 09.2
-    #             content += '%012.2f' % abs(line.amount_currency)
-    #             content += '\n'
+    def drei_aplicado_files_values(self, move_lines):
+        """Implementado segun especificación indicada en ticket 39347. También se puede ver detalles en readme"""
+        self.ensure_one()
+        content = ""
+        for line in move_lines.sorted(key=lambda r: (r.date, r.id)):
+            if line.payment_id:
+                date = line.payment_id.date
+                # cuit (req): 11
+                content += line.partner_id.ensure_vat()
+                # razon_soc (req): 80
+                content += line.partner_id.name.ljust(80)[:80]
+                # nro_certificado: 10
+                content += "%010d" % int(line.withholding_id.name)
+                # fecha_ret: 10 (formato "dd/mm/aaaa")
+                content += fields.Date.from_string(date).strftime("%d/%m/%Y")
+                # base_imp: 09.2
+                content += "%012.2f" % line.withholding_id.base_amount
+                tax = line._get_settlement_tax() or line.tax_line_id
+                # alicuota: 09.6
+                content += f"{tax.amount:0>16.6f}"
+                # importe (req): 09.2
+                content += "%012.2f" % abs(line.amount_currency)
+                content += "\n"
 
-    #     return [{
-    #         'txt_filename': 'DREI retenciones aplicadas.txt',
-    #         'txt_content': content,
-    #     }]
+        return [
+            {
+                "txt_filename": "DREI retenciones aplicadas.txt",
+                "txt_content": content,
+            }
+        ]
 
     def misiones_files_values(self, move_lines):
         """Implementado segun especificación indicada en ticket 60295. También se puede ver detalles en readme"""
@@ -1641,18 +1659,25 @@ class AccountJournal(models.Model):
     def iibb_aplicado_arba_desde_01032026_files_values(self, move_lines):
         """Extendemos para que solo si esta disponible el módulo de arba_ws se incluya la generación del
         archivo para registrar reteciones por lote"""
-        self.ensure_one()
-        return self.iibb_aplicado_arba_desde_01032026(
-            move_lines
-        ) + self.iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(move_lines)
+        txt_perc = []
+        txt_ret = []
+        if percepciones := move_lines.filtered(lambda x: not x.payment_id):
+            txt_perc = self.iibb_aplicado_arba_desde_01032026(percepciones) or []
+        if retenciones := move_lines.filtered(lambda x: x.payment_id and x.withholding_id):
+            txt_ret = self.iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(retenciones) or []
+        return txt_perc + txt_ret
 
     def iibb_aplicado_arba_act_7_desde_01032026_files_values(self, move_lines):
         """Extendemos para que solo si esta disponible el módulo de arba_ws se incluya la generación del
         archivo para registrar reteciones por lote"""
         self.ensure_one()
-        return self.iibb_aplicado_arba_desde_01032026(
-            move_lines, act_7=True
-        ) + self.iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(move_lines)
+        txt_perc = []
+        txt_ret = []
+        if percepciones := move_lines.filtered(lambda x: not x.payment_id):
+            txt_perc = self.iibb_aplicado_arba_desde_01032026(percepciones, act_7=True) or []
+        if retenciones := move_lines.filtered(lambda x: x.payment_id and x.withholding_id):
+            txt_ret = self.iibb_alta_ret_aplicado_arba_por_lote_a122r_01032026(retenciones) or []
+        return txt_perc + txt_ret
 
     def iibb_aplicado_arba_desde_01032026(self, move_lines, act_7=None):
         """Desarrollado según especificación https://web.arba.gov.ar/instructivo-y-marco-normativo
@@ -1660,54 +1685,50 @@ class AccountJournal(models.Model):
         luego hay que ir a la sección "DDJJ Periódicas Web IIBB NOVEDAD" y hacer click en
         "Instructivos y Marco Normativo - NOVEDAD -"). Finalmente descargar la especificación
         donde dice 'Descargar PDF (Nuevo Diseño - Vigente para operaciones a partir del 01/03/2026)'
-        Implementados:
+        Implementado:
             - 1.2 Percepciones Act. 7 método Percibido (quincenal)
-            - 1.7 Retenciones ( excepto actividad 29, 6 de Bancos y 17 de
-            Bancos y No Bancos)
         """
         self.ensure_one()
-        ret = ""
-        perc = ""
+        content = ""
+        percepciones_monto_modificado = []
 
         for line in move_lines:
-            # pay_group = payment.payment_group_id
             move = line.move_id
-            payment = line.payment_id
             internal_type = line.l10n_latam_document_type_id.internal_type
             document_code = line.l10n_latam_document_type_id.code
 
             line.partner_id.ensure_vat()
 
             # CUIT contribuyente Percibido (long 13, desde 1 hasta 13. Formato 99-99999999-9)
-            content = line.partner_id.l10n_ar_formatted_vat
+            content += line.partner_id.l10n_ar_formatted_vat
             # Fecha Percepción (long 10, desde 14 hasta 23. Formato dd/mm/aaaa)
             content += fields.Date.from_string(line.date).strftime("%d/%m/%Y")
 
-            # solo para percepciones
-            if not payment:
-                # Tipo de Comprobante (long 1, desde 24 hasta 24)
-                # Valores F=Factura, R=Recibo, C=Nota Crédito, D =Nota Debito, V=Nota de Venta, E=Factura de Crédito
-                # Electrónica, H=Nota de Crédito Electrónica, I=Nota de Débito Electrónica.
-                content += (
-                    document_code in ["201", "206", "211"]
-                    and "E"
-                    or document_code in ["203", "208", "213"]
-                    and "H"
-                    or document_code in ["202", "207", "212"]
-                    and "I"
-                    or internal_type == "invoice"
-                    and "F"
-                    or internal_type == "credit_note"
-                    and "C"
-                    or internal_type == "debit_note"
-                    and "D"
-                    or "R"
-                )
-                # Letra Comprobante (long 1, desde 25 hasta 25. Valores A,B,C, o “ ” (blanco)).
-                content += line.l10n_latam_document_type_id.l10n_ar_letter
-            document_parts = move._l10n_ar_get_document_number_parts(
-                move.l10n_latam_document_number, move.l10n_latam_document_type_id.code
+            # Tipo de Comprobante (long 1, desde 24 hasta 24)
+            # Valores F=Factura, R=Recibo, C=Nota Crédito, D =Nota Debito, V=Nota de Venta, E=Factura de Crédito
+            # Electrónica, H=Nota de Crédito Electrónica, I=Nota de Débito Electrónica.
+            content += (
+                document_code in ["201", "206", "211"]
+                and "E"
+                or document_code in ["203", "208", "213"]
+                and "H"
+                or document_code in ["202", "207", "212"]
+                and "I"
+                or internal_type == "invoice"
+                and "F"
+                or internal_type == "credit_note"
+                and "C"
+                or internal_type == "debit_note"
+                and "D"
+                or "R"
             )
+            # Letra Comprobante (long 1, desde 25 hasta 25. Valores A,B,C, o “ ” (blanco)).
+            content += (
+                line.l10n_latam_document_type_id.l10n_ar_letter
+                if line.l10n_latam_document_type_id and line.l10n_latam_document_type_id.l10n_ar_letter
+                else " "
+            )
+            document_parts = move._get_document_number_parts()
             pto_venta = "{:0>5d}".format(document_parts["point_of_sale"])[-5:]
             nro_documento = "{:0>8d}".format(document_parts["invoice_number"])[-8:]
             # Numero Sucursal (long 5, desde 26 hasta 30)
@@ -1723,35 +1744,50 @@ class AccountJournal(models.Model):
             # donde el importe debe ser negativo y la base debe ser menor o igual a cero.
             # Completar con ceros a la izquierda. En las notas de crédito el signo negativo
             # ocupará la primera posición a la izquierda. Formato: 99999999999.99
-            if payment:
-                content += format_amount(line.withholding_id.base_amount, 14, 2, ",")
-            else:
-                content += format_amount(-get_line_tax_base(line), 14, 2, ",")
+            monto_imponible = False
+            monto_imponible = float_round(-get_line_tax_base(line), precision_digits=2)
+            content += format_amount(monto_imponible, 14, 2, ",")
             # Alícuota (long 5.2, desde 53 a 57)
-            content += "%05.2f" % tax.amount
+            alicuota = float_round(tax.amount, precision_digits=2)
+            content += "%05.2f" % alicuota
             # este es para el primer tipo de la especificación
             # Importe de la percepción (long 13.2, desde 58 hasta 70)
             # Con separador decimal (, o .). Mayor a cero, excepto para notas de crédito donde
             # debe ser negativo. Completar con ceros a la izquierda. En las notas de crédito el
             # signo negativo ocupará la primera posición a la izquierda. Formato: 9999999999.99
-            content += format_amount(-line.balance, 13, 2, ",")
+            importe_percepcion = format_amount(-line.balance, 13, 2, ",")
+            if monto_imponible:
+                # por ahora solo hacemos este cálculo para percepciones,
+                # no lo hacemos para retenciones por ahora
+                importe_percepcion_calculado = format_amount(
+                    float_round(monto_imponible * alicuota / 100, precision_digits=2), 13, 2, ","
+                )
+            # ARBA valida importe = base * alícuota; informar el importe calculado
+            # cuando difiere del original por redondeos (calculado por odoo).
+            if monto_imponible and importe_percepcion != importe_percepcion_calculado:
+                percepciones_monto_modificado.append(
+                    {
+                        "id": line.id,
+                        "nombre": line.move_id.display_name,
+                        "importe_original": importe_percepcion,
+                        "importe_calculado": importe_percepcion_calculado,
+                    }
+                )
+                content += importe_percepcion_calculado
+            else:
+                content += importe_percepcion
 
             # según especificación se requiere fecha nuevamente
             # por ahora lo sacamos ya que en ticket 16448 nos mandaron ej.
             # donde no se incluía, en realidad tal vez depende de la actividad
             # ya que en la primer tabla del pdf la agrega y en la segunda no
-            if act_7 and not payment:
+            if act_7:
                 # Fecha Emisión (long 10, desde 71 hasta 80)
                 content += fields.Date.from_string(line.date).strftime("%d/%m/%Y")
             # Tipo Operación (long 1, desde 71 hasta 71 o desde 81 a 81 si es act_7)
             # A= Alta, B=Baja, M=Modificación.
             content += "A"
             content += "\r\n"
-
-            if payment:
-                ret += content
-            else:
-                perc += content
 
         # para la fecha de la presentación tomamos la fecha de un apunte a liquidar
         # el valor de la quincena puede ser 0, 1, 2. deberiamos ver si podemos
@@ -1765,21 +1801,20 @@ class AccountJournal(models.Model):
             "7",  # 7 serian las percepciones
         )
 
-        # AR-vat-PERIODO-ACTIVIDAD-LOTE_MD5
-        ret_txt_filename = "AR-%s-%s-%s-LOTEX.txt" % (
-            self.company_id.vat,
-            period,
-            "6",  # 6 serian las retenciones
-        )
+        if percepciones_monto_modificado:
+            comprobantes_modificados = "\n".join(
+                "%(id)s - %(nombre)s - %(importe_original)s - %(importe_calculado)s" % percepcion
+                for percepcion in percepciones_monto_modificado
+            )
+            _logger.info(
+                "Percepciones ARBA con importe ajustado:\nid - nombre - importe original - importe calculado\n%s",
+                comprobantes_modificados,
+            )
 
         return [
             {
                 "txt_filename": perc_txt_filename,
-                "txt_content": perc,
-            },
-            {
-                "txt_filename": ret_txt_filename,
-                "txt_content": ret,
+                "txt_content": content,
             },
         ]
 
@@ -1794,9 +1829,6 @@ class AccountJournal(models.Model):
         Solo para retenciones. Vigente desde 01/03/2026."""
         self.ensure_one()
         content = ""
-
-        # Forzamos para informar solo las retenciones (por las dudas por error seleccionen percepciones)
-        move_lines = move_lines.filtered(lambda x: x.withholding_id)
 
         # Si el módulo de WS ARBA A122R está instalado, debemos filtrar para no informar en el TXT
         # las retenciones que ya fueron informadas via webservice.
@@ -1813,9 +1845,7 @@ class AccountJournal(models.Model):
             content += line.partner_id.ensure_vat()
 
             move = line.move_id
-            document_parts = move._l10n_ar_get_document_number_parts(
-                move.l10n_latam_document_number, move.l10n_latam_document_type_id.code
-            )
+            document_parts = move._get_document_number_parts()
             pto_venta = "{:0>5d}".format(document_parts["point_of_sale"])[-5:]
 
             # Sucursal (long 5, desde 32 hasta 36)
