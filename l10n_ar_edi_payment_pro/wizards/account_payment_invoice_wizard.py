@@ -25,9 +25,10 @@ class AccountPaymentInvoiceWizard(models.TransientModel):
             {
                 "l10n_ar_afip_asoc_period_start": self.l10n_ar_afip_asoc_period_start,
                 "l10n_ar_afip_asoc_period_end": self.l10n_ar_afip_asoc_period_end,
-                origin_doc: self.origin_invoice_id.id,
             }
         )
+        if self.origin_invoice_id:
+            invoice_vals[origin_doc] = self.origin_invoice_id.id
         # Si estamos creando una ND automatica con el modulo de  account_payment_pro_financial_surcharge entonces
         # seteamos automaticamente los campos l10n_ar_afip_asoc_period_start / l10n_ar_afip_asoc_period_end que son
         # necesarios para poder validar la ND electronica automatica. El periodo lo seteamos conforme a la fecha del

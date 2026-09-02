@@ -77,11 +77,14 @@ class ResCompany(models.Model):
         ).with_context(l10n_ar_force_create_rate=l10n_ar_force_create_rate).update_currency_rates()
 
     def update_currency_rates(self):
-        """When the first cron 'Currency: rate update' runs, we only need to update the rates for Argentine companies that have a daily update interval.
-        If the interval is weekly or monthly, the rates will be updated in the second cron 'Currency: Re Check Afip Currency Rate'."""
-        if not self.env.context.get("l10n_ar_force_create_rate"):
-            self = self.filtered(lambda c: c.currency_interval_unit == "daily")
-        super(ResCompany, self).update_currency_rates()
+        """Keep standard schedules for non-ARCA companies."""
+        if self.env.context.get("l10n_ar_force_create_rate"):
+            return super().update_currency_rates()
+        arca_companies = self.filtered(lambda company: company.currency_provider == "afip")
+        companies_to_update = (self - arca_companies) | arca_companies.filtered(
+            lambda company: company.currency_interval_unit == "daily"
+        )
+        return super(ResCompany, companies_to_update).update_currency_rates()
 
     def _parse_afip_data(self, available_currencies):
         """This method is used to update the currency rates using ARCA provider. Rates are given against AR"""
