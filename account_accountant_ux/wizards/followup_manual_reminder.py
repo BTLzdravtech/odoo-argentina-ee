@@ -8,7 +8,11 @@ class FollowupManualReminder(models.TransientModel):
         """Override to exclude attachments from invoices with no_followup lines."""
         defaults = super().default_get(fields_list)
 
-        if "attachment_ids" in defaults and defaults.get("partner_id"):
+        if (
+            self.env.company.country_id.code == "AR"
+            and "attachment_ids" in defaults
+            and defaults.get("partner_id")
+        ):
             partner = self.env["res.partner"].browse(defaults["partner_id"])
 
             # Filter out invoices where all receivable/payable lines have no_followup=True

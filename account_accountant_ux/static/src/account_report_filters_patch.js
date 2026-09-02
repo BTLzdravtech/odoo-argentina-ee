@@ -7,28 +7,14 @@ import { patch } from "@web/core/utils/patch";
 const { DateTime } = luxon;
 
 patch(AccountReportFilters.prototype, {
-    /**
-     * Rename "Year" → "Fiscal Year" and add new "Calendar Year" entry.
-     */
     dateFilters(mode) {
-        switch (mode) {
-            case "single":
-                return [
-                    { name: _t("End of Month"), period: "month" },
-                    { name: _t("End of Quarter"), period: "quarter" },
-                    { name: _t("Fiscal Year"), period: "year" },
-                    { name: _t("Calendar Year"), period: "calendar_year" },
-                ];
-            case "range":
-                return [
-                    { name: _t("Month"), period: "month" },
-                    { name: _t("Quarter"), period: "quarter" },
-                    { name: _t("Fiscal Year"), period: "year" },
-                    { name: _t("Calendar Year"), period: "calendar_year" },
-                ];
-            default:
-                throw new Error(`Invalid mode in dateFilters(): ${mode}`);
+        const filters = super.dateFilters(mode);
+        const yearFilter = filters.find((filter) => filter.period === "year");
+        if (yearFilter) {
+            yearFilter.name = _t("Fiscal Year");
         }
+        filters.push({ name: _t("Calendar Year"), period: "calendar_year" });
+        return filters;
     },
 
     /**

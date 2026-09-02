@@ -6,21 +6,24 @@ class AccountBatchPayment(models.Model):
     _inherit = "account.batch.payment"
 
     def verify_unlinked_payments_from_batch(self):
-        """don´t allow to unlink payments linked to the batch payment if the batch is not on draft state"""
-        if self._origin.filtered(lambda x: x.state != "draft"):
+        """Protect payments linked to non-draft Argentine batches."""
+        ar_batches = self._origin.filtered(lambda batch: batch.company_id.country_id.code == "AR")
+        if ar_batches.filtered(lambda batch: batch.state != "draft"):
             raise UserError(
                 _("You are not allowed to delete payments from a batch payment if the batch is not on draft state.")
             )
 
     def unlink(self):
-        """This method don't allow to delete an account batch payment if it's not on draft state"""
-        if self.filtered(lambda x: x.state != "draft"):
+        """Prevent deleting non-draft Argentine batch payments."""
+        ar_batches = self.filtered(lambda batch: batch.company_id.country_id.code == "AR")
+        if ar_batches.filtered(lambda batch: batch.state != "draft"):
             raise UserError(_("You are not allowed to delete a batch payment if is not on draft state."))
         return super().unlink()
 
-    def action_draft(self):
-        """Only sent batch payments can be changed to draft state"""
-        matched_entries = self.payment_ids.filtered("is_matched")
+    def action_reset_to_draft(self):
+        """Reset unmatched Argentine batch payments to draft."""
+        ar_batches = self.filtered(lambda batch: batch.company_id.country_id.code == "AR")
+        matched_entries = ar_batches.payment_ids.filtered("is_matched")
         if matched_entries:
             error_msg = "The following payments are reconciled and cannot be reset to draft state: \n"
             for entry in matched_entries:
@@ -37,7 +40,8 @@ class AccountBatchPayment(models.Model):
                 ],
             }
             raise RedirectWarning(error_msg, action_error, _("Show matched entries"))
-        if self.payment_ids.move_id:
-            self.payment_ids.move_id.is_move_sent = False
-        self.payment_ids.unmark_as_sent()
-        self.write({"state": "draft"})
+        ar_payments = ar_batches.payment_ids
+        if ar_payments.move_id:
+            ar_payments.move_id.is_move_sent = False
+        ar_payments.unmark_as_sent()
+        return True
