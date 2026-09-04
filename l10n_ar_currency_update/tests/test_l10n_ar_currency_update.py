@@ -5,7 +5,6 @@
 import datetime
 from unittest.mock import patch
 
-from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -198,9 +197,9 @@ class TestL10nArCurrencyUpdate(TransactionCase):
             "Company 1 and Company 2 should have different rates due to the markup applied only to Company 1.",
         )
 
-    def test_protected_currency_name_cannot_be_changed(self):
-        with self.assertRaisesRegex(UserError, "Cannot change the name/code"):
-            self.USD.write({"name": "USX"})
+    def test_currency_with_arca_code_name_can_be_changed(self):
+        self.USD.write({"name": "USX"})
+        self.assertEqual(self.USD.name, "USX")
 
     def test_non_protected_currency_name_can_be_changed(self):
         custom_currency = self.env["res.currency"].create(
