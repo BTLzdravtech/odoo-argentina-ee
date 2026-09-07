@@ -1,6 +1,6 @@
 {
     "name": "Argentinian Electronic Invoicing UX",
-    "version": "19.0.1.4.0",
+    "version": "19.0.1.5.0",
     "category": "Localization/Argentina",
     "sequence": 14,
     "author": "ADHOC SA",
@@ -8,6 +8,7 @@
     "license": "AGPL-3",
     "summary": "",
     "depends": [
+        "account_ux",  # shared_to_branches, que este asistente escribe en el diario que crea
         "l10n_ar_ux",
         "l10n_ar_edi",
         "l10n_ar_reports_simple",

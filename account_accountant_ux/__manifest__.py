@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Accounting Accountant UX",
-    "version": "19.0.1.13.0",
+    "version": "19.0.1.15.0",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -35,6 +35,7 @@
     ],
     "data": [
         "security/ir.model.access.csv",
+        "views/res_company_view.xml",
         "views/res_partner_view.xml",
         "views/account_move_line.xml",
         "views/account_report_view.xml",
@@ -50,6 +51,7 @@
             "account_accountant_ux/static/src/components/account_report/filters/filters.js",
             "account_accountant_ux/static/src/components/account_report/controller.js",
             "account_accountant_ux/static/src/account_report_filters_patch.js",
+            "account_accountant_ux/static/src/components/account_report/warnings.xml",
         ]
     },
     "post_init_hook": "post_init_hook",
