@@ -223,8 +223,8 @@ class TestAfipConnection(TransactionCase):
             yield companies_used
 
     def _get_connection(self, company, afip_ws="wsfe"):
-        """Thin wrapper that skips the DB commit injected by the base method."""
-        return company.with_context(l10n_ar_invoice_skip_commit=True)._l10n_ar_get_connection(afip_ws)
+        """Return an ARCA connection for tests."""
+        return company._l10n_ar_get_connection(afip_ws)
 
     # ------------------------------------------------------------------
     # _l10n_ar_get_connection tests
