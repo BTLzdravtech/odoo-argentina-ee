@@ -26,14 +26,6 @@ msgid "ARCA Web Service (Argentina)"
 msgstr ""
 
 #. module: l10n_ar_currency_update
-#. odoo-python
-#: code:addons/l10n_ar_currency_update/models/res_currency.py:0
-msgid ""
-"Cannot change the name/code of %(currencies)s as it has an ARCA Code defined.\n"
-"Doing so would affect both the automatic currency rate synchronization service and the electronic invoicing service."
-msgstr ""
-
-#. module: l10n_ar_currency_update
 #: model:ir.model,name:l10n_ar_currency_update.model_res_company
 msgid "Companies"
 msgstr ""

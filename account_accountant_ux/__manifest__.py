@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Accounting Accountant UX",
-    "version": "19.0.1.13.0",
+    "version": "19.0.1.13.1",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -55,6 +55,6 @@
     "post_init_hook": "post_init_hook",
     "demo": [],
     "installable": True,
-    "auto_install": True,
+    "auto_install": False,
     "application": False,
 }
