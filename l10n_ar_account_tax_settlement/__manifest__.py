@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Tax Settlements For Argentina",
-    "version": "18.0.1.16.0",
+    "version": "18.0.1.17.0",
     "category": "Accounting",
     "author": "ADHOC SA",
     "website": "www.adhoc.com.ar",
@@ -40,7 +40,9 @@
         "data/account_report_data.xml",
         "views/inflation_adjustmen_index_view.xml",
         "views/account_tax_view.xml",
+        "views/account_payment_view.xml",
         "wizards/inflation_adjustment_view.xml",
+        "wizards/tax_settlement_reassign_view.xml",
         "security/ir.model.access.csv",
     ],
     "demo": [],
