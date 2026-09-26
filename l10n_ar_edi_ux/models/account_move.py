@@ -90,6 +90,13 @@ class AccountMove(models.Model):
             inv._check_vat_condition()
         return super()._l10n_ar_do_afip_ws_request_cae(client, auth, transport)
 
+    @api.depends("l10n_ar_afip_result")
+    def _compute_show_reset_to_draft_button(self):
+        super()._compute_show_reset_to_draft_button()
+        self.filtered(
+            lambda move: move.country_code == "AR" and move.l10n_ar_afip_result == "A"
+        ).show_reset_to_draft_button = True
+
     def _post(self, soft=True):
         """Be able to validate electronic vendor bills that are type ARCA POS"""
         purchase_ar_edi_invoices = self.filtered(
@@ -116,13 +123,6 @@ class AccountMove(models.Model):
                 error_vendor_bill = bill
                 break
             validated += bill
-
-            # If we get CAE from AFIP then we make commit because we need to save the information returned by AFIP
-            # in Odoo for consistency, this way if an error ocurrs later in another invoice we will have the ones
-            # correctly validated in AFIP in Odoo (CAE, Result, xml response/request).
-            if not self.env.context.get("l10n_ar_invoice_skip_commit"):
-                # TODO ver de utilizar savepoints: https://github.com/OCA/odoo-community.org/blob/master/website/Contribution/CONTRIBUTING.rst#never-commit-the-transaction
-                self.env.cr.commit()  # pragma pylint: disable=invalid-commit
 
         if error_vendor_bill:
             msg = (

@@ -5,7 +5,7 @@
         <field name="model">account.journal</field>
         <field name="inherit_id" ref="account.account_journal_dashboard_kanban_view"/>
         <field name="arch" type="xml">
-            <xpath expr="//div[@id='dashboard_bank_cash_right'][1]/div[1]" position="before">
+            <xpath expr="//div[@id='dashboard_bank_cash_right']" position="inside">
                 <div class="row" t-if="dashboard.account_balance_general">
                     <a type="object" name="action_open_bank_balance_in_gl" class="col overflow-hidden text-start"><span title="Balance in Odoo">Balance in GL</span></a>
                     <div class="col-auto text-end">

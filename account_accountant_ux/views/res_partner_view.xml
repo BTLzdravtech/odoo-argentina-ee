@@ -78,9 +78,6 @@
                 <attribute name="invisible">not has_moves</attribute>
             </xpath>
 
-            <xpath expr="//button[@name='open_follow_up_report']//span[hasclass('o_stat_text')]" position="replace">
-                <span class="o_stat_text">Follow-up Report</span>
-            </xpath>
             <xpath expr="//button[@name='action_open_reconcile']" position="after">
                 <button class="oe_stat_button" type="action" groups="account.group_account_invoice"
                         name="%(account_accountant_ux.action_partner_ledger)d" icon="fa-book">

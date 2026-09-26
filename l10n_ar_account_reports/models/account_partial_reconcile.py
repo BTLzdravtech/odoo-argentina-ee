@@ -10,7 +10,7 @@ class AccountPartialReconcile(models.Model):
         returns = res.mapped("debit_move_id.move_id.closing_return_id") | res.mapped(
             "credit_move_id.move_id.closing_return_id"
         )
-        # Disparamos actualización si alguna de las líneas pertenece a un return
+        returns = returns.filtered(lambda account_return: account_return.company_id.country_id.code == "AR")
         if returns:
             returns._update_payment_state()
         return res
@@ -19,6 +19,7 @@ class AccountPartialReconcile(models.Model):
         returns = self.mapped("debit_move_id.move_id.closing_return_id") | self.mapped(
             "credit_move_id.move_id.closing_return_id"
         )
+        returns = returns.filtered(lambda account_return: account_return.company_id.country_id.code == "AR")
         res = super().unlink()
         if returns:
             returns._update_payment_state()
