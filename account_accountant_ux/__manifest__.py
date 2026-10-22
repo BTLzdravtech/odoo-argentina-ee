@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Accounting Accountant UX",
-    "version": "18.0.1.10.0",
+    "version": "18.0.1.11.0",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -47,6 +47,7 @@
     "assets": {
         "web.assets_backend": [
             "account_accountant_ux/static/src/account_report_filters_patch.js",
+            "account_accountant_ux/static/src/move_line_list_reconcile_patch.js",
         ],
     },
     "installable": True,
