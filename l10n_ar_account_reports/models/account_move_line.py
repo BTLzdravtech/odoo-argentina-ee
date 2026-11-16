@@ -24,4 +24,4 @@ class AccountMoveLine(models.Model):
         """
         if self.company_id.country_id.code == "AR" and self.move_id.closing_return_id:
             return False
-        return super()._affect_tax_report() or self.move_id.closing_return_id
+        return super()._affect_tax_report()
