@@ -131,7 +131,10 @@ class ResPartner(models.Model):
     @api.depends_context("company", "allowed_company_ids")
     @api.depends("invoice_ids", "invoice_ids.line_ids.no_followup")
     def _compute_total_due(self):
-        """Override to exclude lines with no_followup=True from totals."""
+        """Exclude no-followup lines only for Argentine companies."""
+        super()._compute_total_due()
+        if self.env.company.account_fiscal_country_id.code != "AR":
+            return
         from collections import defaultdict
 
         due_data = defaultdict(float)

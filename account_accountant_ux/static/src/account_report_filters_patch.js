@@ -23,11 +23,8 @@ patch(AccountReportFilters.prototype, {
      */
     initDateFilters() {
         const filters = {
-            month: 0,
-            quarter: 0,
-            year: 0,
+            ...super.initDateFilters(),
             calendar_year: 0,
-            tax_period: 0,
         };
 
         const periodType = this.controller.options.date.period_type;
@@ -117,9 +114,7 @@ patch(AccountReportFilters.prototype, {
             case "tax_period":
                 return this._displayTaxPeriod(dateTo);
             default:
-                throw new Error(
-                    `Invalid period type in displayPeriod(): ${periodType}`
-                );
+                return super.displayPeriod(periodType);
         }
     },
 

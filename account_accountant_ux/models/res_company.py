@@ -15,6 +15,6 @@ class ResCompany(models.Model):
         bypass = (
             self.env["ir.config_parameter"].sudo().get_param("account.bypass_lock_date_validation", default="False")
         )
-        if bypass == "True":
+        if bypass == "True" and self.account_fiscal_country_id.code == "AR":
             return
         return super()._validate_locks(values)
